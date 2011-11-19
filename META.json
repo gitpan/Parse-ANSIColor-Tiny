@@ -56,7 +56,7 @@
    "provides" : {
       "Parse::ANSIColor::Tiny" : {
          "file" : "lib/Parse/ANSIColor/Tiny.pm",
-         "version" : "0.302"
+         "version" : "0.400"
       }
    },
    "release_status" : "stable",
@@ -72,7 +72,7 @@
          "web" : "https://github.com/rwstauner/Parse-ANSIColor-Tiny"
       }
    },
-   "version" : "0.302",
+   "version" : "0.400",
    "x_Dist_Zilla" : {
       "plugins" : [
          {
@@ -102,12 +102,12 @@
          },
          {
             "class" : "Dist::Zilla::Plugin::PruneFiles",
-            "name" : "@Author::RWSTAUNER/PruneRepoMetaFiles",
+            "name" : "@Author::RWSTAUNER/PruneDevelCoverDatabase",
             "version" : "4.300003"
          },
          {
             "class" : "Dist::Zilla::Plugin::PruneFiles",
-            "name" : "@Author::RWSTAUNER/PruneDevelCoverDatabase",
+            "name" : "@Author::RWSTAUNER/PruneCodeStatCollection",
             "version" : "4.300003"
          },
          {
@@ -141,9 +141,14 @@
             "version" : "4.300003"
          },
          {
-            "class" : "Dist::Zilla::Plugin::Readme",
-            "name" : "@Author::RWSTAUNER/Readme",
-            "version" : "4.300003"
+            "class" : "Dist::Zilla::Plugin::ReadmeMarkdownFromPod",
+            "name" : "@Author::RWSTAUNER/ReadmeMarkdownFromPod",
+            "version" : "0.103510"
+         },
+         {
+            "class" : "Dist::Zilla::Plugin::CopyReadmeFromBuild",
+            "name" : "@Author::RWSTAUNER/CopyReadmeFromBuild",
+            "version" : "0.0019"
          },
          {
             "class" : "Dist::Zilla::Plugin::Bugtracker",
@@ -158,7 +163,7 @@
          {
             "class" : "Dist::Zilla::Plugin::GithubMeta",
             "name" : "@Author::RWSTAUNER/GithubMeta",
-            "version" : "0.26"
+            "version" : "0.28"
          },
          {
             "class" : "Dist::Zilla::Plugin::AutoPrereqs",
@@ -331,16 +336,6 @@
             "version" : "4.300003"
          },
          {
-            "class" : "Dist::Zilla::Plugin::ConfirmRelease",
-            "name" : "@Author::RWSTAUNER/ConfirmRelease",
-            "version" : "4.300003"
-         },
-         {
-            "class" : "Dist::Zilla::Plugin::UploadToCPAN",
-            "name" : "@Author::RWSTAUNER/UploadToCPAN",
-            "version" : "4.300003"
-         },
-         {
             "class" : "Dist::Zilla::Plugin::Git::Check",
             "name" : "@Author::RWSTAUNER/@Git/Check",
             "version" : "1.112510"
@@ -359,6 +354,16 @@
             "class" : "Dist::Zilla::Plugin::Git::Push",
             "name" : "@Author::RWSTAUNER/@Git/Push",
             "version" : "1.112510"
+         },
+         {
+            "class" : "Dist::Zilla::Plugin::ConfirmRelease",
+            "name" : "@Author::RWSTAUNER/ConfirmRelease",
+            "version" : "4.300003"
+         },
+         {
+            "class" : "Dist::Zilla::Plugin::UploadToCPAN",
+            "name" : "@Author::RWSTAUNER/UploadToCPAN",
+            "version" : "4.300003"
          },
          {
             "class" : "Dist::Zilla::Plugin::InstallRelease",

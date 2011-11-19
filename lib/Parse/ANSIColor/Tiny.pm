@@ -12,7 +12,7 @@ use warnings;
 
 package Parse::ANSIColor::Tiny;
 {
-  $Parse::ANSIColor::Tiny::VERSION = '0.302';
+  $Parse::ANSIColor::Tiny::VERSION = '0.400';
 }
 BEGIN {
   $Parse::ANSIColor::Tiny::AUTHORITY = 'cpan:RWSTAUNER';
@@ -39,6 +39,7 @@ our %ATTRIBUTES = (
   blink          => 5,
   reverse        => 7,
   concealed      => 8,
+  reverse_off    => 27,
   %FOREGROUND,
   %BACKGROUND,
 );
@@ -56,17 +57,41 @@ sub new {
   my $self = {
     @_ == 1 ? %{ $_[0] } : @_,
   };
+
+  $self->{process} = 1
+    if $self->{auto_reverse};
+
+  # fix incorrectly specified attributes
+  ($self->{background} ||= 'black') =~ s/^(on_)*/on_/;
+  ($self->{foreground} ||= 'white') =~ s/^(on_)*//;
+
   bless $self, $class;
 }
 
 
+sub colors {
+  return @COLORS;
+}
+sub foreground_colors {
+  return (@COLORS, map { "bright_$_" } @COLORS);
+}
+sub background_colors {
+  return ( (map { "on_$_" } @COLORS), (map { "on_bright_$_" } @COLORS) );
+}
+
+
 sub identify {
-  my $self = shift;
+  my ($self, @codes) = @_;
+  local $_;
   return
     grep { defined }
-    map  { $ATTRIBUTES_R{ 0 + $_ } }
+    map  { $ATTRIBUTES_R{ 0 + ($_ || 0) } }
     map  { split /;/ }
-    @_;
+    # empty sequence is the same as clear so don't let split throw out empty ends
+    map  { m/;$/ ? $_ . '0' : $_ }
+    # prepending zero doesn't hurt and is probably better than s/^;/0;/
+    map  { '0' . ($_ || '0')  }
+    @codes;
 }
 
 
@@ -76,6 +101,10 @@ sub normalize {
   foreach my $attr ( @_ ){
     if( $attr eq 'clear' ){
       @norm = ();
+    }
+    elsif( $attr eq 'reverse_off' ){
+      # reverse_off cancels reverse
+      @norm = grep { $_ ne 'reverse' } @norm;
     }
     else {
       # remove previous (duplicate) occurrences of this attribute
@@ -96,9 +125,10 @@ sub parse {
 
   my $last_pos = 0;
   my $last_attr = [];
+  my $processed = [];
   my $parsed = [];
 
-  while( my $matched = $orig =~ m/(\e\[([0-9;]+)m)/mg ){
+  while( my $matched = $orig =~ m/(\e\[([0-9;]*)m)/mg ){
     my $seq = $1;
     my $attrs = $2;
 
@@ -111,7 +141,7 @@ sub parse {
 
     my $len = ($cur_pos - length($seq)) - $last_pos;
     push @$parsed, [
-      $last_attr,
+      $processed,
       substr($orig, $last_pos, $len)
     ]
       # don't bother with empty strings
@@ -119,10 +149,11 @@ sub parse {
 
     $last_pos = $cur_pos;
     $last_attr = [$self->normalize(@$last_attr, $self->identify($attrs))];
+    $processed = $self->{process} ? [$self->process(@$last_attr)] : $last_attr;
   }
 
     push @$parsed, [
-      $last_attr,
+      $processed,
       substr($orig, $last_pos)
     ]
       # if there's any string left
@@ -132,11 +163,54 @@ sub parse {
 }
 
 
+sub process {
+  my ($self, @attr) = @_;
+  @attr = $self->process_reverse(@attr) if $self->{auto_reverse};
+  return @attr;
+}
+
+
+sub process_reverse {
+  my $self = shift;
+  my ($rev, $fg, $bg, @attr);
+  my $i = 0;
+  foreach my $attr ( @_ ){
+    if( $attr eq 'reverse' ){
+      $rev = 1;
+      next;
+    }
+    elsif( $FOREGROUND{ $attr } ){
+      $fg = $i;
+    }
+    elsif( $BACKGROUND{ $attr } ){
+      $bg = $i;
+    }
+    push @attr, $attr;
+    $i++;
+  }
+  # maintain order for consistency with other methods
+  if( $rev ){
+    # if either color is missing then the default colors should be reversed
+    {
+      $attr[ $fg = $i++ ] = $self->{foreground} if !defined $fg;
+      $attr[ $bg = $i++ ] = $self->{background} if !defined $bg;
+    }
+    $attr[ $fg ] = 'on_' . $attr[ $fg ]      if defined $fg;
+    $attr[ $bg ] = substr( $attr[ $bg ], 3 ) if defined $bg;
+  }
+  return @attr;
+}
+
+
 our @EXPORT_OK;
 BEGIN {
+  my @funcs = qw(identify normalize parse);
+  my $suffix = '_ansicolor';
+  local $_;
   eval join '', ## no critic (StringyEval)
-    map { "sub ${_}_ansicolor { __PACKAGE__->new->$_(\@_) }" }
-    @EXPORT_OK = qw(identify normalize parse);
+    map { "sub ${_}$suffix { __PACKAGE__->new->$_(\@_) }" }
+    @funcs;
+  @EXPORT_OK = map { $_ . $suffix } @funcs;
 }
 
 sub import {
@@ -148,13 +222,12 @@ sub import {
 
   foreach my $arg ( @_ ){
     die "'$arg' is not exported by $class"
-      unless my $func = *{"${class}::$arg"}{CODE};
-    *{"${caller}::$arg"} = $func;
+      unless grep { $arg eq $_ } @EXPORT_OK;
+    *{"${caller}::$arg"} = *{"${class}::$arg"}{CODE};
   }
 }
 
 # TODO: option for blotting out 'concealed'? s/\S/ /g
-# TODO: HTML::FromANSI::Tiny ?  like synopsis, options for tag_name, attr_name, or style_attr?
 
 1;
 
@@ -175,7 +248,7 @@ Parse::ANSIColor::Tiny - Determine attributes of ANSI-Colored string
 
 =head1 VERSION
 
-version 0.302
+version 0.400
 
 =head1 SYNOPSIS
 
@@ -232,8 +305,39 @@ If you do find bugs please submit tickets (with patches, if possible).
 
 Constructor.
 
-Takes a hash or hash ref of arguments
-though currently no options are defined :-)
+Takes a hash or hash ref of arguments:
+
+=over 4
+
+=item *
+
+C<auto_reverse> - Automatically invert colors when C<reverse> is present; Disabled by default.
+
+=item *
+
+C<background> - Color to assume as background; Black by default. Currently used by L</process_reverse>.
+
+=item *
+
+C<foreground> - Color to assume as foreground; White by default. Currently used by L</process_reverse>.
+
+=back
+
+=head2 colors
+
+Returns a list of the base color names (in numeric escape sequence order).
+
+=head2 foreground_colors
+
+Returns a list of the foreground colors (in numeric escape sequence order).
+
+This includes the base colors and the C<bright_> variants.
+
+=head2 background_colors
+
+Returns a list of the background colors (in numeric escape sequence order).
+
+This includes the C<on_> and C<on_bright_> variants of the base colors.
 
 =head2 identify
 
@@ -299,6 +403,51 @@ C<colored()> in L<Term::ANSIColor>:
 
   Term::ANSIColor::colored( ['red'], 'colored words' );
 
+=head2 process
+
+Performs post-processing on the provided attributes.
+
+This currently includes L</process_reverse>
+if C<auto_reverse> is enabled.
+
+=head2 process_reverse
+
+  my @attr = $parser->process_reverse( $parser->normalize( '31;42;7' ) );
+
+Translates a normalized set of attributes into something easier to process.
+This is called internally when C<auto_reverse> is configured.
+
+If C<reverse> is included in the attributes
+it should invert the foreground and background colors.
+
+This method makes the attributes more straight forward
+and likely easier for other things to process:
+
+  my @norm = $parser->normalize( '1;31;42;7' );
+  # returns qw( bold red on_green reverse );
+
+  my @attr = $parser->process_reverse( @norm );
+  # returns qw( bold on_red green );
+
+This extra step is necessary to maintain state
+and properly handle C<reverse>/C<reverse_off>
+since two C<reverse>s do not cancel each other,
+but rather the second should be ignored.
+
+If no foreground or background color is currently active
+then the colors specified as C<foreground> and C<background>
+will be included (and reversed).
+
+  my @attr = $parser->process_reverse( qw( bold reverse ) );
+  # returns qw( bold on_white black );
+
+  my @attr = $parser->process_reverse( qw( bold reverse red ) );
+  # returns qw( bold on_red   black );
+
+This is consistent with the way it is drawn in the terminal.
+Explicitly specifying both colors should make it easy
+for anything downstream to process and display as intended.
+
 =head1 FUNCTIONS
 
 =head2 identify_ansicolor
@@ -329,7 +478,15 @@ L<Term::ANSIColor> - For marking up text that will be printed to the terminal
 
 =item *
 
-L<HTML::FromANSI> - Specific to (old) HTML; As of 2.03 (released in 2007) tags are not customizable.  Uses L<Term::VT102> which is likely more robust but may be overkill in simple situations (and was difficult to install in the past).
+L<Image::TextMode> (and L<Image::TextMode::Format::ANSI>) - Successor to L<Image::ANSI>; Specifically designed for parsing ANSI art
+
+=item *
+
+L<Term::VT102> - Handles more than colors and is likely more robust but may be overkill in simple situations (and was difficult to install in the past).
+
+=item *
+
+L<HTML::FromANSI::Tiny> - Uses this module to translate ANSI colored text to simple HTML
 
 =back
 
