@@ -11,8 +11,8 @@ use strict;
 use warnings;
 
 package Parse::ANSIColor::Tiny;
-# git description: v0.400-3-g95adb95
-$Parse::ANSIColor::Tiny::VERSION = '0.500';
+# git description: v0.500-2-gaf3f174
+$Parse::ANSIColor::Tiny::VERSION = '0.501';
 BEGIN {
   $Parse::ANSIColor::Tiny::AUTHORITY = 'cpan:RWSTAUNER';
 }
@@ -217,7 +217,7 @@ sub remove_escape_sequences {
   # We could certainly expand this if the need arises.
   $string =~ s{
     \e\[
-      [0-9;]+
+      [0-9;]*
       [a-ln-zA-Z]
   }{}gx;
 
@@ -271,7 +271,7 @@ Parse::ANSIColor::Tiny - Determine attributes of ANSI-Colored string
 
 =head1 VERSION
 
-version 0.500
+version 0.501
 
 =head1 SYNOPSIS
 

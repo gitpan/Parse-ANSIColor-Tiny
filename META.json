@@ -78,7 +78,7 @@
    "provides" : {
       "Parse::ANSIColor::Tiny" : {
          "file" : "lib/Parse/ANSIColor/Tiny.pm",
-         "version" : "0.500"
+         "version" : "0.501"
       }
    },
    "release_status" : "stable",
@@ -94,7 +94,7 @@
          "web" : "https://github.com/rwstauner/Parse-ANSIColor-Tiny"
       }
    },
-   "version" : "0.500",
+   "version" : "0.501",
    "x_Dist_Zilla" : {
       "perl" : {
          "version" : "5.016003"

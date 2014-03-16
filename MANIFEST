@@ -19,6 +19,7 @@ t/normalize.t
 t/parse.t
 t/process.t
 t/process_reverse.t
+t/remove_escapes.t
 t/synopsis.t
 t/term-ansicolor.t
 xt/author/critic.t

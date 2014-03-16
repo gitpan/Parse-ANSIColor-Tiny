@@ -39,7 +39,7 @@ no_index:
 provides:
   Parse::ANSIColor::Tiny:
     file: lib/Parse/ANSIColor/Tiny.pm
-    version: '0.500'
+    version: '0.501'
 requires:
   perl: '5.006'
   strict: '0'
@@ -48,7 +48,7 @@ resources:
   bugtracker: http://rt.cpan.org/Public/Dist/Display.html?Name=Parse-ANSIColor-Tiny
   homepage: https://github.com/rwstauner/Parse-ANSIColor-Tiny
   repository: https://github.com/rwstauner/Parse-ANSIColor-Tiny.git
-version: '0.500'
+version: '0.501'
 x_Dist_Zilla:
   perl:
     version: '5.016003'
