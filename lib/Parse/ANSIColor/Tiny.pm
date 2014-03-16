@@ -11,9 +11,8 @@ use strict;
 use warnings;
 
 package Parse::ANSIColor::Tiny;
-{
-  $Parse::ANSIColor::Tiny::VERSION = '0.400';
-}
+# git description: v0.400-3-g95adb95
+$Parse::ANSIColor::Tiny::VERSION = '0.500';
 BEGIN {
   $Parse::ANSIColor::Tiny::AUTHORITY = 'cpan:RWSTAUNER';
 }
@@ -40,6 +39,8 @@ our %ATTRIBUTES = (
   reverse        => 7,
   concealed      => 8,
   reverse_off    => 27,
+  reset_foreground => 39,
+  reset_background => 49,
   %FOREGROUND,
   %BACKGROUND,
 );
@@ -55,6 +56,7 @@ our %ATTRIBUTES = (
 sub new {
   my $class = shift;
   my $self = {
+    remove_escapes => 1,
     @_ == 1 ? %{ $_[0] } : @_,
   };
 
@@ -106,6 +108,12 @@ sub normalize {
       # reverse_off cancels reverse
       @norm = grep { $_ ne 'reverse' } @norm;
     }
+    elsif( $attr eq 'reset_foreground' ){
+      @norm = grep { !exists $FOREGROUND{$_} } @norm;
+    }
+    elsif( $attr eq 'reset_background' ){
+      @norm = grep { !exists $BACKGROUND{$_} } @norm;
+    }
     else {
       # remove previous (duplicate) occurrences of this attribute
       @norm = grep { $_ ne $attr } @norm;
@@ -128,14 +136,13 @@ sub parse {
   my $processed = [];
   my $parsed = [];
 
-  while( my $matched = $orig =~ m/(\e\[([0-9;]*)m)/mg ){
+  # Strip escape sequences that we aren't going to use
+  $orig = $self->remove_escape_sequences($orig)
+    if $self->{remove_escapes};
+
+  while( $orig =~ m/(\e\[([0-9;]*)m)/mg ){
     my $seq = $1;
     my $attrs = $2;
-
-    # strip out any escape sequences that aren't colors
-    # TODO: unicode flags?
-    # TODO: make this an option
-    #$str =~ s/[^[:print:]]//g;
 
     my $cur_pos = pos($orig);
 
@@ -202,6 +209,22 @@ sub process_reverse {
 }
 
 
+sub remove_escape_sequences {
+  my ($self, $string) = @_;
+
+  # This is in no way comprehensive or accurate...
+  # it just seems like most of the sequences match this.
+  # We could certainly expand this if the need arises.
+  $string =~ s{
+    \e\[
+      [0-9;]+
+      [a-ln-zA-Z]
+  }{}gx;
+
+  return $string;
+}
+
+
 our @EXPORT_OK;
 BEGIN {
   my @funcs = qw(identify normalize parse);
@@ -233,14 +256,14 @@ sub import {
 
 # NOTE: this synopsis is tested (eval'ed) in t/synopsis.t
 
-
 __END__
+
 =pod
 
-=for :stopwords Randy Stauner ACKNOWLEDGEMENTS cpan testmatrix url annocpan anno bugtracker
-rt cpants kwalitee diff irc mailto metadata placeholders
+=encoding UTF-8
 
-=encoding utf-8
+=for :stopwords Randy Stauner ACKNOWLEDGEMENTS cpan testmatrix url annocpan anno bugtracker
+rt cpants kwalitee diff irc mailto metadata placeholders metacpan
 
 =head1 NAME
 
@@ -248,7 +271,7 @@ Parse::ANSIColor::Tiny - Determine attributes of ANSI-Colored string
 
 =head1 VERSION
 
-version 0.400
+version 0.500
 
 =head1 SYNOPSIS
 
@@ -296,6 +319,8 @@ It may not be 100% correct, especially in complex cases.
 It only handles the C<m> escape sequence (C<\033[0m>)
 which produces colors and simple attributes (bold, underline)
 (like what can be produced with L<Term::ANSIColor>).
+Other escape sequences are removed by default
+but you can disable this by passing C<< remove_escapes => 0 >> to the constructor.
 
 If you do find bugs please submit tickets (with patches, if possible).
 
@@ -320,6 +345,10 @@ C<background> - Color to assume as background; Black by default. Currently used 
 =item *
 
 C<foreground> - Color to assume as foreground; White by default. Currently used by L</process_reverse>.
+
+=item *
+
+C<remove_escapes> - Remove other terminal escape sequences (not related to color).  Passes strings through L</remove_escape_sequences> before parsing.
 
 =back
 
@@ -448,6 +477,14 @@ This is consistent with the way it is drawn in the terminal.
 Explicitly specifying both colors should make it easy
 for anything downstream to process and display as intended.
 
+=head2 remove_escape_sequences
+
+  my $clean = $parser->remove_escape_sequences( $string );
+
+Strip other terminal escape sequences (those not relating to color)
+from the string to avoid unexpected characters in the output.
+This method is called from L</parse> if C<remove_escapes> is enabled.
+
 =head1 FUNCTIONS
 
 =head2 identify_ansicolor
@@ -507,51 +544,11 @@ in addition to those websites please use your favorite search engine to discover
 
 =item *
 
-Search CPAN
+MetaCPAN
 
-The default CPAN search engine, useful to view POD in HTML format.
+A modern, open-source CPAN search engine, useful to view POD in HTML format.
 
-L<http://search.cpan.org/dist/Parse-ANSIColor-Tiny>
-
-=item *
-
-RT: CPAN's Bug Tracker
-
-The RT ( Request Tracker ) website is the default bug/issue tracking system for CPAN.
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Parse-ANSIColor-Tiny>
-
-=item *
-
-CPAN Ratings
-
-The CPAN Ratings is a website that allows community ratings and reviews of Perl modules.
-
-L<http://cpanratings.perl.org/d/Parse-ANSIColor-Tiny>
-
-=item *
-
-CPAN Testers
-
-The CPAN Testers is a network of smokers who run automated tests on uploaded CPAN distributions.
-
-L<http://www.cpantesters.org/distro/P/Parse-ANSIColor-Tiny>
-
-=item *
-
-CPAN Testers Matrix
-
-The CPAN Testers Matrix is a website that provides a visual overview of the test results for a distribution on various Perls/platforms.
-
-L<http://matrix.cpantesters.org/?dist=Parse-ANSIColor-Tiny>
-
-=item *
-
-CPAN Testers Dependencies
-
-The CPAN Testers Dependencies is a website that shows a chart of the test results of all dependencies for a distribution.
-
-L<http://deps.cpantesters.org/?module=Parse::ANSIColor::Tiny>
+L<http://metacpan.org/release/Parse-ANSIColor-Tiny>
 
 =back
 
@@ -580,4 +577,3 @@ This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
